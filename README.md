@@ -12,7 +12,7 @@ $ sudo apt install python3-pip
 2. Install KSNN
 
 ```sh
-$ pip3 install ksnn/ksnn_vim4-1.4-py3-none-any.whl
+$ pip3 install ksnn/ksnn_vim4-1.4.1-py3-none-any.whl
 ```
 
 ## Docs

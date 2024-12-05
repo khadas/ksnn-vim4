@@ -51,13 +51,12 @@ def process(input):
     box_1 = softmax(input[..., NUM_CLS + 16:NUM_CLS + 32], -1)
     box_2 = softmax(input[..., NUM_CLS + 32:NUM_CLS + 48], -1)
     box_3 = softmax(input[..., NUM_CLS + 48:NUM_CLS + 64], -1)
+    
     result = np.zeros((grid_h, grid_w, 1, 4))
-    for i in range(grid_h):
-    	for j in range(grid_w):
-    		result[i, j, :, 0] = np.dot(box_0[i, j], constant_martix)
-    		result[i, j, :, 1] = np.dot(box_1[i, j], constant_martix)
-    		result[i, j, :, 2] = np.dot(box_2[i, j], constant_martix)
-    		result[i, j, :, 3] = np.dot(box_3[i, j], constant_martix)
+    result[..., 0] = np.dot(box_0, constant_martix)[..., 0]
+    result[..., 1] = np.dot(box_1, constant_martix)[..., 0]
+    result[..., 2] = np.dot(box_2, constant_martix)[..., 0]
+    result[..., 3] = np.dot(box_3, constant_martix)[..., 0]
 
     col = np.tile(np.arange(0, grid_w), grid_w).reshape(-1, grid_w)
     row = np.tile(np.arange(0, grid_h).reshape(-1, 1), grid_h)
@@ -66,12 +65,8 @@ def process(input):
     row = row.reshape(grid_h, grid_w, 1, 1)
     grid = np.concatenate((col, row), axis=-1)
 
-    result[..., 0:2] = 0.5 - result[..., 0:2]
-    result[..., 0:2] += grid
-    result[..., 0:2] /= (grid_w, grid_h)
-    result[..., 2:4] = 0.5 + result[..., 2:4]
-    result[..., 2:4] += grid
-    result[..., 2:4] /= (grid_w, grid_h)
+    result[..., 0:2] = (0.5 - result[..., 0:2] + grid) / (grid_w, grid_h)
+    result[..., 2:4] = (0.5 + result[..., 2:4] + grid) / (grid_w, grid_h)
 
     return result, box_class_probs
 
@@ -220,16 +215,6 @@ if __name__ == '__main__':
     while(1):
         ret,orig_img = cap.read()
         
-        # yolov8n_int8
-        img = cv.resize(orig_img, (640, 640))
-        
-        start = time.time()
-        data = yolov8.nn_inference(img, input_shape=(640, 640, 3), input_type="RGB", output_shape=[(80, 80, 144), (40, 40, 144), (20, 20, 144)], output_type="FLOAT")
-        end = time.time()
-        print('inference : ', end - start)
-        
-        '''
-        # yolov8n_int8_raw
         img = cv.resize(orig_img, (640, 640)).astype(np.float32)
         img[:, :, 0] = img[:, :, 0] - mean[0]
         img[:, :, 1] = img[:, :, 1] - mean[1]
@@ -237,14 +222,13 @@ if __name__ == '__main__':
         img = img / var[0]
         
         start = time.time()
-        data = yolov8.nn_inference(img, input_shape=(640, 640, 3), input_type="RAW", output_shape=[(80, 80, 144), (40, 40, 144), (20, 20, 144)], output_type="RAW")
+        data = yolov8.nn_inference(img, input_shape=(640, 640, 3), input_type="RAW", output_shape=[(40, 40, 144), (80, 80, 144), (20, 20, 144)], output_type="FLOAT")
         end = time.time()
         print('inference : ', end - start)
-        '''
         
         input0_data = data[2]
-        input1_data = data[1]
-        input2_data = data[0]
+        input1_data = data[0]
+        input2_data = data[1]
 
         input0_data = np.expand_dims(input0_data, axis=2)
         input1_data = np.expand_dims(input1_data, axis=2)
@@ -260,9 +244,10 @@ if __name__ == '__main__':
         if boxes is not None:
             draw(orig_img, boxes, scores, classes)
 
-        cv.imshow("capture", img)
+        cv.imshow("capture", orig_img)
         if cv.waitKey(1) & 0xFF == ord('q'):
            break
 
+    yolov8.nn_destory_network()
     cap.release()
     cv.destroyAllWindows() 
