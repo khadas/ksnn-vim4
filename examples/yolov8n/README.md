@@ -17,9 +17,13 @@ $ ./convert \
 --input-shapes "3,640,640" \
 --dtype "float32" \
 --quantize-dtype int8 \
---outdir onnx_output
---channel-mean-value '0 0 0 0.00392156' \
+--outdir onnx_output \
+--inference-input-type "float32" \
+--inference-output-type "float32" \
+--channel-mean-value '0,0,0,255' \
 --source-file dataset.txt \
+--iterations 1 \
+--batch-size 1 \
 --kboard VIM4
 ```
 
@@ -33,9 +37,13 @@ $ ./convert \
 --input-shapes "3,640,640" \
 --dtype "float32" \
 --quantize-dtype uint8 \
---outdir onnx_output
---channel-mean-value '0 0 0 0.00392156' \
+--outdir onnx_output \
+--inference-input-type "float32" \
+--inference-output-type "float32" \
+--channel-mean-value '0,0,0,255' \
 --source-file dataset.txt \
+--iterations 1 \
+--batch-size 1 \
 --kboard VIM4
 ```
 
@@ -49,10 +57,12 @@ $ ./convert \
 --input-shapes "3,640,640" \
 --dtype "float32" \
 --quantize-dtype int16 \
---outdir onnx_output
---channel-mean-value '0 0 0 0.00392156' \
+--outdir onnx_output \
+--inference-input-type "float32" \
+--inference-output-type "float32" \
+--channel-mean-value '0,0,0,255' \
 --source-file dataset.txt \
+--iterations 1 \
+--batch-size 1 \
 --kboard VIM4
 ```
-
-If you use VIM3L , please use `VIM3L` to replace `VIM3`
