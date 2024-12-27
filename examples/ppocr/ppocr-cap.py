@@ -16,6 +16,10 @@ det_var = [255 * 0.229, 255 * 0.224, 255 * 0.225]
 rec_mean = 127.5
 rec_var = 128
 
+det_input_size = (736, 736) # (model height, model width)
+rec_input_size = ( 48, 320) # (model height, model width)
+rec_output_size = (40, 6625)
+
 font = ImageFont.truetype("./data/simfang.ttf", 20)
 
 def draw(image, boxes):
@@ -91,7 +95,12 @@ if __name__ == '__main__':
     ppocr_rec.nn_init(library=rec_library, model=rec_model, level=level)
     print('Done.')
 
+    # usb camera
     cap = cv.VideoCapture(int(cap_num))
+    # mipi
+    # pipeline = "v4l2src device=/dev/media0 io-mode=dmabuf ! queue ! video/x-raw,format=YUY2,framerate=30/1 ! queue ! videoconvert ! appsink"
+    # cap = cv.VideoCapture(pipeline, cv.CAP_GSTREAMER)
+    
     cap.set(3,1920)
     cap.set(4,1080)
     
@@ -99,27 +108,45 @@ if __name__ == '__main__':
         ret,orig_img = cap.read()
         
         start = time.time()
-        det_img = cv.resize(orig_img, (736, 736)).astype(np.float32)
+        det_img = cv.resize(orig_img, (det_input_size[1], det_input_size[0])).astype(np.float32)
         det_img[:, :, 0] = (det_img[:, :, 0] - det_mean[0]) / det_var[0]
         det_img[:, :, 1] = (det_img[:, :, 1] - det_mean[1]) / det_var[1]
         det_img[:, :, 2] = (det_img[:, :, 2] - det_mean[2]) / det_var[2]
         
-        det_output = ppocr_det.nn_inference(det_img, input_shape=(736, 736, 3), input_type="RAW", output_shape=[(736, 736, 1)], output_type="FLOAT")
+        det_output = ppocr_det.nn_inference(det_img, input_shape=(det_input_size[0], det_input_size[1], 3), input_type="RAW", output_shape=[(det_input_size[0], det_input_size[1], 1)], output_type="FLOAT")
         
-        det_results = ocr_det_postprocess(det_output[0], orig_img)
+        det_results = ocr_det_postprocess(det_output[0], orig_img, det_input_size)
+        
+        final_results = []
 
         for i in range(len(det_results)):
             xmin, ymin, xmax, ymax, _, _ = det_results[i]
             rec_img = orig_img[ymin:ymax, xmin:xmax]
-            rec_img = cv.resize(rec_img, (320, 48)).astype(np.float32)
-            rec_img = (rec_img - rec_mean) / rec_var
+            
+            new_height = rec_input_size[0]
+            new_width = int(new_height / rec_img.shape[0] * rec_img.shape[1])
         
-            rec_output = ppocr_rec.nn_inference(rec_img, input_shape=(48, 320, 3), input_type="RAW", output_shape=[(40, 6625)], output_type="FLOAT")
+            if new_width > rec_input_size[1] * 1.2:
+                # text too long. If you want to detect it, please convert rec model input longer.
+                continue
+            elif new_width < rec_input_size[1] * 1.2 and new_width > rec_input_size[1]:
+                new_width = rec_input_size[1]        
+            
+            rec_img = cv.resize(rec_img, (new_width, new_height)).astype(np.float32)
+            padding_img = np.zeros((rec_input_size[0], rec_input_size[1], 3)).astype(np.float32)
+            padding_img[:, :new_width] = rec_img
+        
+            padding_img = (padding_img - rec_mean) / rec_var
+        
+            rec_output = ppocr_rec.nn_inference(padding_img, input_shape=(rec_input_size[0], rec_input_size[1], 3), input_type="RAW", output_shape=[(rec_output_size[0], rec_output_size[1])], output_type="FLOAT")
         
             det_results[i][5] = ocr_rec_postprocess(rec_output[0])
+            final_results.append(det_results[i])
 
         if det_results is not None:
-            pil_img, cv_img = draw(orig_img, det_results)
+            pil_img, cv_img = draw(orig_img, final_results)
+        
+        cv_img = cv.resize(cv_img, (1280, 720))
         
         end = time.time()
         print('Done. inference time: ', end - start)

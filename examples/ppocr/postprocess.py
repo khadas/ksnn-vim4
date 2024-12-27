@@ -3,7 +3,7 @@ import numpy as np
 from shapely.geometry import Polygon
 import pyclipper
 
-det_box_thresh = 0.5
+det_box_thresh = 0.2
 min_size = 5
 unclip_ratio = 1.5
 
@@ -17,7 +17,7 @@ character_str.append(" ")
 ignored_token = [0]
 
 
-def ocr_det_postprocess(det_output, original_image):
+def ocr_det_postprocess(det_output, original_image, det_input_size):
 	outs = cv2.findContours((det_output * 255).astype(np.uint8), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
 	if len(outs) == 3:
 		contours = outs[1]
@@ -31,7 +31,7 @@ def ocr_det_postprocess(det_output, original_image):
 			continue
 		
 		mask = np.ones((bounding_box[3], bounding_box[2]), dtype=np.uint8)
-		tmp_det_output = det_output.reshape(736, 736)
+		tmp_det_output = det_output.reshape(det_input_size[0], det_input_size[1])
 		score = cv2.mean(tmp_det_output[bounding_box[1]:bounding_box[1] + bounding_box[3], bounding_box[0]:bounding_box[0] + bounding_box[2]], mask)[0]
 		if score < det_box_thresh:
 			continue
@@ -48,10 +48,10 @@ def ocr_det_postprocess(det_output, original_image):
 		expanded = offset.Execute(distance)
 		tmp_box = np.array(expanded)
         
-		xmin = max(int(np.min(tmp_box[0, :, 0]) / 736 * original_image.shape[1]), 0)
-		ymin = max(int(np.min(tmp_box[0, :, 1]) / 736 * original_image.shape[0]), 0)
-		xmax = min(int(np.max(tmp_box[0, :, 0]) / 736 * original_image.shape[1] + 1), original_image.shape[1])
-		ymax = min(int(np.max(tmp_box[0, :, 1]) / 736 * original_image.shape[0] + 1), original_image.shape[0])
+		xmin = max(int(np.min(tmp_box[0, :, 0]) / det_input_size[1] * original_image.shape[1]), 0)
+		ymin = max(int(np.min(tmp_box[0, :, 1]) / det_input_size[0] * original_image.shape[0]), 0)
+		xmax = min(int(np.max(tmp_box[0, :, 0]) / det_input_size[1] * original_image.shape[1] + 1), original_image.shape[1])
+		ymax = min(int(np.max(tmp_box[0, :, 1]) / det_input_size[0] * original_image.shape[0] + 1), original_image.shape[0])
         
 		det_results.append([xmin, ymin, xmax, ymax, score, 0])
         
