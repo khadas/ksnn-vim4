@@ -2,7 +2,8 @@
 
 ```sh
 $ python3 yolov8n-picture.py --model ./models/VIM4/yolov8n_int8.adla --library ./libs/libnn_yolov8n.so --picture ./data/horses.jpg
-$ python3 yolov8n-cap.py --model ./models/VIM4/yolov8n_int8.adla --library ./libs/libnn_yolov8n.so --device X
+$ python3 yolov8n-cap.py --model ./models/VIM4/yolov8n_int8.adla --library ./libs/libnn_yolov8n.so --type usb --device 0
+$ python3 yolov8n-cap.py --model ./models/VIM4/yolov8n_int8.adla --library ./libs/libnn_yolov8n.so --type mipi --device 63
 ```
 
 # Convert

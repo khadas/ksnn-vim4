@@ -46,6 +46,7 @@ if __name__ == '__main__':
     parser.add_argument("--rec_library", help="Path to C static library file for ppocr_rec")
     parser.add_argument("--rec_model", help="Path to nbg file for ppocr_rec")
     parser.add_argument("--device", help="the number for video device")
+    parser.add_argument("--type", help="the type for video")
     parser.add_argument("--level", help="Information printer level: 0/1/2")
 
     args = parser.parse_args()
@@ -67,6 +68,11 @@ if __name__ == '__main__':
         cap_num = args.device
     else :
         sys.exit("video device not found !!! Please use format :--device ")
+    
+    if args.type :
+        cap_type = args.type
+    else :
+        sys.exit("video type not found !!! Please use format :--type ")
     
     if args.det_library :
         if os.path.exists(args.det_library) == False:
@@ -95,19 +101,21 @@ if __name__ == '__main__':
     ppocr_rec.nn_init(library=rec_library, model=rec_model, level=level)
     print('Done.')
 
-    # usb camera
-    cap = cv.VideoCapture(int(cap_num))
-    # mipi
-    # pipeline = "v4l2src device=/dev/media0 io-mode=dmabuf ! queue ! video/x-raw,format=YUY2,framerate=30/1 ! queue ! videoconvert ! appsink"
-    # cap = cv.VideoCapture(pipeline, cv.CAP_GSTREAMER)
+    if cap_type == "usb":
+        cap = cv.VideoCapture(int(cap_num), cv.CAP_V4L2)
+    elif cap_type == "mipi":
+        pipeline = "v4l2src device=/dev/video" + cap_num + " io-mode=dmabuf ! video/x-raw,format=YUY2,width=1920,height=1080,framerate=30/1 ! queue ! videoconvert ! appsink"
+        cap = cv.VideoCapture(pipeline, cv.CAP_GSTREAMER)
+    else:
+        sys.exit('Unsupport camera type \'{}\' !!!'.format(cap_type))
     
     cap.set(3,1920)
     cap.set(4,1080)
     
     while(1):
+        start = time.time()
         ret,orig_img = cap.read()
         
-        start = time.time()
         det_img = cv.resize(orig_img, (det_input_size[1], det_input_size[0])).astype(np.float32)
         det_img[:, :, 0] = (det_img[:, :, 0] - det_mean[0]) / det_var[0]
         det_img[:, :, 1] = (det_img[:, :, 1] - det_mean[1]) / det_var[1]
@@ -147,13 +155,13 @@ if __name__ == '__main__':
             pil_img, cv_img = draw(orig_img, final_results)
         
         cv_img = cv.resize(cv_img, (1280, 720))
-        
-        end = time.time()
-        print('Done. inference time: ', end - start)
 
         cv.imshow("capture", cv_img)
         if cv.waitKey(1) & 0xFF == ord('q'):
            break
+       
+        end = time.time()
+        print('Done. inference time: ', end - start)
     
     ppocr_det.nn_destory_network()
     ppocr_rec.nn_destory_network()

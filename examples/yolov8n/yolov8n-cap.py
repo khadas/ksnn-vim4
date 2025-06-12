@@ -152,8 +152,8 @@ def draw(image, boxes, scores, classes):
     
     for box, score, cl in zip(boxes, scores, classes):
         x1, y1, x2, y2 = box
-        print('class: {}, score: {}'.format(CLASSES[cl], score))
-        print('box coordinate left,top,right,down: [{}, {}, {}, {}]'.format(x1, y1, x2, y2))
+        #print('class: {}, score: {}'.format(CLASSES[cl], score))
+        #print('box coordinate left,top,right,down: [{}, {}, {}, {}]'.format(x1, y1, x2, y2))
         x1 *= image.shape[1]
         y1 *= image.shape[0]
         x2 *= image.shape[1]
@@ -175,6 +175,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--library", help="Path to C static library file")
     parser.add_argument("--model", help="Path to nbg file")
+    parser.add_argument("--type", help="the type for video")
     parser.add_argument("--device", help="the number for video device")
     parser.add_argument("--level", help="Information printer level: 0/1/2")
 
@@ -190,6 +191,10 @@ if __name__ == '__main__':
         cap_num = args.device
     else :
         sys.exit("video device not found !!! Please use format :--device ")
+    if args.type :
+        cap_type = args.type
+    else :
+        sys.exit("video type not found !!! Please use format :--type ")
     if args.library :
         if os.path.exists(args.library) == False :
             sys.exit('C static library \'{}\' not exist'.format(args.library))
@@ -208,11 +213,19 @@ if __name__ == '__main__':
     yolov8.nn_init(library=library, model=model, level=level)
     print('Done.')
 
-    cap = cv.VideoCapture(int(cap_num))
+    if cap_type == "usb":
+        cap = cv.VideoCapture(int(cap_num), cv.CAP_V4L2)
+    elif cap_type == "mipi":
+        pipeline = "v4l2src device=/dev/video" + cap_num + " io-mode=dmabuf ! video/x-raw,format=YUY2,width=1920,height=1080,framerate=30/1 ! queue ! videoconvert ! appsink"
+        cap = cv.VideoCapture(pipeline, cv.CAP_GSTREAMER)
+    else:
+        sys.exit('Unsupport camera type \'{}\' !!!'.format(cap_type))
+    
     cap.set(3,1920)
     cap.set(4,1080)
     
     while(1):
+        start = time.time()
         ret,orig_img = cap.read()
         
         img = cv.resize(orig_img, (640, 640)).astype(np.float32)
@@ -221,10 +234,7 @@ if __name__ == '__main__':
         img[:, :, 2] = img[:, :, 2] - mean[2]
         img = img / var[0]
         
-        start = time.time()
         data = yolov8.nn_inference(img, input_shape=(640, 640, 3), input_type="RAW", output_shape=[(40, 40, 144), (80, 80, 144), (20, 20, 144)], output_type="FLOAT")
-        end = time.time()
-        print('inference : ', end - start)
         
         input0_data = data[2]
         input1_data = data[0]
@@ -247,6 +257,9 @@ if __name__ == '__main__':
         cv.imshow("capture", orig_img)
         if cv.waitKey(1) & 0xFF == ord('q'):
            break
+        
+        end = time.time()
+        print('inference : ', end - start)
 
     yolov8.nn_destory_network()
     cap.release()
