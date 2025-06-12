@@ -2,7 +2,8 @@
 
 ```sh
 $ python3 ppocr-picture.py --det_model ./models/VIM4/ppocr_det_int8.adla --det_library ./libs/libnn_ppocr_det.so --rec_model ./models/VIM4/ppocr_rec_int16.adla --rec_library ./libs/libnn_ppocr_rec.so --picture ./data/test.png
-$ python3 ppocr-cap.py --det_model ./models/VIM4/ppocr_det_int8.adla --det_library ./libs/libnn_ppocr_det.so --rec_model ./models/VIM4/ppocr_rec_int16.adla --rec_library ./libs/libnn_ppocr_rec.so --device X
+$ python3 ppocr-cap.py --det_model ./models/VIM4/ppocr_det_int8.adla --det_library ./libs/libnn_ppocr_det.so --rec_model ./models/VIM4/ppocr_rec_int16.adla --rec_library ./libs/libnn_ppocr_rec.so --type usb --device 0
+$ python3 ppocr-cap.py --det_model ./models/VIM4/ppocr_det_int8.adla --det_library ./libs/libnn_ppocr_det.so --rec_model ./models/VIM4/ppocr_rec_int16.adla --rec_library ./libs/libnn_ppocr_rec.so --type mipi --device 63
 ```
 
 # Convert
